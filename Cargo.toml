@@ -2,5 +2,10 @@
 name = "cmark-hamlet"
 version = "0.0.1"
 authors = ["critiqjo <john.ch.fr@gmail.com>"]
+description = "WIP: pulldown-cmark to hamlet adapter"
+
+repository = "https://github.com/critiqjo/cmark-hamlet"
+keywords = ["markdown", "pulldown-cmark", "html", "hamlet"]
+license = "MIT/Apache-2.0"
 
 [dependencies]
