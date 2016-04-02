@@ -1,0 +1,6 @@
+[package]
+name = "cmark-hamlet"
+version = "0.0.1"
+authors = ["critiqjo <john.ch.fr@gmail.com>"]
+
+[dependencies]
