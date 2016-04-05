@@ -2,12 +2,12 @@ use std::borrow::Cow;
 
 use cmark::Tag as CmTag;
 use cmark::Event as CmEvent;
-use hamlet::Event as HmEvent;
+use hamlet::Token as HmToken;
 
 pub struct Adapter<'a, I> {
     cm_iter: I,
     cm_looka: Option<CmEvent<'a>>, // for lookahead
-    hm_queue: Vec<HmEvent<'a>>,
+    hm_queue: Vec<HmToken<'a>>,
     group_text: bool,
 }
 
@@ -25,11 +25,11 @@ impl<'a, I> Adapter<'a, I>
         }
     }
 
-    fn cm_start_tag(&mut self, tag: CmTag<'a>) -> HmEvent<'a> {
+    fn cm_start_tag(&mut self, tag: CmTag<'a>) -> HmToken<'a> {
         match tag {
             CmTag::Rule => {
                 let _ = self.cm_iter.next(); // skip End(Rule)
-                HmEvent::start_tag("hr", attr_set!()).closed()
+                HmToken::start_tag("hr", attrs!()).closed()
             }
             CmTag::Code |
             CmTag::Strong |
@@ -43,16 +43,16 @@ impl<'a, I> Adapter<'a, I>
             CmTag::Item |
             CmTag::List(None) |
             CmTag::List(Some(1)) |
-            CmTag::Header(_) => HmEvent::start_tag(tag_map(tag), attr_set!()),
+            CmTag::Header(_) => HmToken::start_tag(tag_map(tag), attrs!()),
             CmTag::List(Some(start)) => {
-                HmEvent::start_tag("ol", attr_set!(start = format!("{}", start)))
+                HmToken::start_tag("ol", attrs!(start = format!("{}", start)))
             }
             CmTag::CodeBlock(lang) => {
-                self.hm_queue.push(HmEvent::start_tag("code", attr_set!()));
+                self.hm_queue.push(HmToken::start_tag("code", attrs!()));
                 if lang.is_empty() {
-                    HmEvent::start_tag("pre", attr_set!())
+                    HmToken::start_tag("pre", attrs!())
                 } else {
-                    HmEvent::start_tag("pre", attr_set!(dataLang = lang))
+                    HmToken::start_tag("pre", attrs!(dataLang = lang))
                 }
             }
             CmTag::Image(src, title) => {
@@ -65,27 +65,27 @@ impl<'a, I> Adapter<'a, I>
                         _ => (), // ignore other events
                     }
                 }
-                let mut attrs = attr_set!(src = src);
+                let mut attrs = attrs!(src = src);
                 if !alt.is_empty() {
-                    attrs.set_attr("alt", alt);
+                    attrs.set("alt", alt);
                 }
                 if !title.is_empty() {
-                    attrs.set_attr("title", title);
+                    attrs.set("title", title);
                 }
-                HmEvent::start_tag("img", attrs).closed()
+                HmToken::start_tag("img", attrs).closed()
             }
             CmTag::Link(href, title) => {
-                let mut attrs = attr_set!(href = href);
+                let mut attrs = attrs!(href = href);
                 if !title.is_empty() {
-                    attrs.set_attr("title", title);
+                    attrs.set("title", title);
                 }
-                HmEvent::start_tag("a", attrs)
+                HmToken::start_tag("a", attrs)
             }
             CmTag::FootnoteDefinition(_) => unimplemented!(),
         }
     }
 
-    fn cm_end_tag(&mut self, tag: CmTag<'a>) -> HmEvent<'a> {
+    fn cm_end_tag(&mut self, tag: CmTag<'a>) -> HmToken<'a> {
         match tag {
             CmTag::Rule => unreachable!(),
             CmTag::Code |
@@ -99,18 +99,18 @@ impl<'a, I> Adapter<'a, I>
             CmTag::TableCell |
             CmTag::Item |
             CmTag::List(_) |
-            CmTag::Header(_) => HmEvent::end_tag(tag_map(tag)),
+            CmTag::Header(_) => HmToken::end_tag(tag_map(tag)),
             CmTag::CodeBlock(_) => {
-                self.hm_queue.push(HmEvent::end_tag("pre"));
-                HmEvent::end_tag("code")
+                self.hm_queue.push(HmToken::end_tag("pre"));
+                HmToken::end_tag("code")
             }
             CmTag::Image(_, _) => unreachable!(),
-            CmTag::Link(_, _) => HmEvent::end_tag("a"),
+            CmTag::Link(_, _) => HmToken::end_tag("a"),
             CmTag::FootnoteDefinition(_) => unimplemented!(),
         }
     }
 
-    fn cm_text(&mut self, mut s: Cow<'a, str>) -> HmEvent<'a> {
+    fn cm_text(&mut self, mut s: Cow<'a, str>) -> HmToken<'a> {
         if self.group_text {
             while let Some(cm_ev) = self.cm_iter.next() {
                 match cm_ev {
@@ -123,7 +123,7 @@ impl<'a, I> Adapter<'a, I>
                 }
             }
         }
-        HmEvent::Text(s)
+        HmToken::Text(s)
     }
 }
 
@@ -149,7 +149,7 @@ fn tag_map<'a>(tag: CmTag<'a>) -> Cow<'a, str> {
 impl<'a, I> Iterator for Adapter<'a, I>
     where I: Iterator<Item = CmEvent<'a>>
 {
-    type Item = HmEvent<'a>;
+    type Item = HmToken<'a>;
     fn next(&mut self) -> Option<Self::Item> {
         if !self.hm_queue.is_empty() {
             Some(self.hm_queue.remove(0))
@@ -165,9 +165,9 @@ impl<'a, I> Iterator for Adapter<'a, I>
                 CmEvent::Start(tag) => self.cm_start_tag(tag),
                 CmEvent::End(tag) => self.cm_end_tag(tag),
                 CmEvent::Text(text) => self.cm_text(text),
-                CmEvent::Html(html) | CmEvent::InlineHtml(html) => HmEvent::RawHtml(html),
+                CmEvent::Html(html) | CmEvent::InlineHtml(html) => HmToken::RawText(html),
                 CmEvent::SoftBreak => self.cm_text("\n".into()),
-                CmEvent::HardBreak => HmEvent::start_tag("br", attr_set!()).closed(),
+                CmEvent::HardBreak => HmToken::start_tag("br", attrs!()).closed(),
                 CmEvent::FootnoteReference(_) => unimplemented!(),
             };
             Some(hm_ev)
@@ -177,7 +177,7 @@ impl<'a, I> Iterator for Adapter<'a, I>
 
 #[cfg(test)]
 mod tests {
-    use hamlet::Event as HmEvent;
+    use hamlet::Token as HmToken;
     use cmark::Event as CmEvent;
     use cmark::Parser;
     use Adapter;
@@ -188,9 +188,9 @@ mod tests {
     {
         ada.map(|hm_ev| {
                match hm_ev {
-                   HmEvent::StartTag{name, ..} | HmEvent::EndTag{name} => name,
-                   HmEvent::Text(text) => text,
-                   _ => panic!("Bad event {:?}", hm_ev),
+                   HmToken::StartTag{name, ..} | HmToken::EndTag{name} => name,
+                   HmToken::Text(text) => text,
+                   _ => panic!("Bad token {:?}", hm_ev),
                }
            })
            .collect()

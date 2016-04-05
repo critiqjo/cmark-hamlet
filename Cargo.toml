@@ -10,4 +10,4 @@ license = "MIT/Apache-2.0"
 
 [dependencies]
 pulldown-cmark = "0.0.8"
-hamlet = { git = "https://github.com/Nemo157/hamlet.git", branch = "events" }
+hamlet = "0.2"

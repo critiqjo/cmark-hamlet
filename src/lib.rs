@@ -8,7 +8,8 @@ pub use adapter::Adapter;
 
 #[cfg(test)]
 mod tests {
-    use hamlet::HtmlWriter;
+    use std::fmt::Write;
+
     use cmark::Parser;
     use Adapter;
 
@@ -20,11 +21,12 @@ mod tests {
                   ```\n\n\
                   [ref]: http://google.com";
         let ada = Adapter::new(Parser::new(md), false);
-        let mut result = Vec::new();
-        HtmlWriter::new(ada).write_to(&mut result).unwrap();
-        let res_str = String::from_utf8(result).unwrap();
+        let mut res = String::from("");
+        for token in ada {
+            write!(res, "{}", token).unwrap();
+        }
         assert_eq!("<p>Ok, <a href=\"http://google.com\">google</a></p><hr />\
                    <pre data-lang=\"rust\"><code>use hamlet;\n</code></pre>",
-                   res_str);
+                   res);
     }
 }
