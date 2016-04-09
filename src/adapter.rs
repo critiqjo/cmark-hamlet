@@ -4,6 +4,7 @@ use cmark::Tag as CmTag;
 use cmark::Event as CmEvent;
 use hamlet::Token as HmToken;
 
+/// _The_ adapter! An iterator that generates `hamlet::Token`s.
 pub struct Adapter<'a, I> {
     cm_iter: I,
     cm_looka: Option<CmEvent<'a>>, // for lookahead
@@ -14,6 +15,8 @@ pub struct Adapter<'a, I> {
 impl<'a, I> Adapter<'a, I>
     where I: Iterator<Item = CmEvent<'a>>
 {
+    /// Create a `Token` iterator from an `Event` iterable. See [Text
+    /// handling](index.html#text-handling) for more details.
     pub fn new<T>(iterable: T, group_text: bool) -> Adapter<'a, I>
         where T: IntoIterator<IntoIter = I, Item = CmEvent<'a>> + 'a
     {
