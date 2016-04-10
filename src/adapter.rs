@@ -32,29 +32,18 @@ impl<'a, I> Adapter<'a, I>
 
     fn cm_start_tag(&mut self, tag: CmTag<'a>) -> HmToken<'a> {
         match tag {
-            CmTag::Rule => {
-                let _ = self.cm_iter.next(); // skip End(Rule)
-                HmToken::start_tag("hr", attrs!()).closed()
-            }
-            CmTag::Code |
-            CmTag::Strong |
-            CmTag::Emphasis |
-            CmTag::Paragraph |
             CmTag::BlockQuote |
-            CmTag::Table(_) |
-            CmTag::TableRow |
-            CmTag::TableCell |
+            CmTag::Code |
+            CmTag::Emphasis |
+            CmTag::Header(_) |
             CmTag::Item |
             CmTag::List(None) |
             CmTag::List(Some(1)) |
-            CmTag::Header(_) => HmToken::start_tag(self.tag_map(tag), attrs!()),
-            CmTag::TableHead => {
-                self.table_head = true;
-                HmToken::start_tag("tr", attrs!())
-            }
-            CmTag::List(Some(start)) => {
-                HmToken::start_tag("ol", attrs!(start = format!("{}", start)))
-            }
+            CmTag::Paragraph |
+            CmTag::Strong |
+            CmTag::Table(_) |
+            CmTag::TableCell |
+            CmTag::TableRow => HmToken::start_tag(self.tag_map(tag), attrs!()),
             CmTag::CodeBlock(lang) => {
                 self.hm_queue.push(HmToken::start_tag("code", attrs!()));
                 if lang.is_empty() {
@@ -63,6 +52,7 @@ impl<'a, I> Adapter<'a, I>
                     HmToken::start_tag("pre", attrs!(dataLang = lang))
                 }
             }
+            CmTag::FootnoteDefinition(_) => unimplemented!(),
             CmTag::Image(src, title) => {
                 let mut alt = String::from("");
                 while let Some(cm_ev) = self.cm_iter.next() {
@@ -89,35 +79,45 @@ impl<'a, I> Adapter<'a, I>
                 }
                 HmToken::start_tag("a", attrs)
             }
-            CmTag::FootnoteDefinition(_) => unimplemented!(),
+            CmTag::List(Some(start)) => {
+                HmToken::start_tag("ol", attrs!(start = format!("{}", start)))
+            }
+            CmTag::Rule => {
+                let _ = self.cm_iter.next(); // skip End(Rule)
+                HmToken::start_tag("hr", attrs!()).closed()
+            }
+            CmTag::TableHead => {
+                self.table_head = true;
+                HmToken::start_tag("tr", attrs!())
+            }
         }
     }
 
     fn cm_end_tag(&mut self, tag: CmTag<'a>) -> HmToken<'a> {
         match tag {
             CmTag::Rule => unreachable!(),
-            CmTag::Code |
-            CmTag::Strong |
-            CmTag::Emphasis |
-            CmTag::Paragraph |
             CmTag::BlockQuote |
-            CmTag::Table(_) |
-            CmTag::TableRow |
-            CmTag::TableCell |
+            CmTag::Code |
+            CmTag::Emphasis |
+            CmTag::Header(_) |
             CmTag::Item |
             CmTag::List(_) |
-            CmTag::Header(_) => HmToken::end_tag(self.tag_map(tag)),
-            CmTag::TableHead => {
-                self.table_head = false;
-                HmToken::end_tag("tr")
-            }
+            CmTag::Paragraph |
+            CmTag::Strong |
+            CmTag::Table(_) |
+            CmTag::TableCell |
+            CmTag::TableRow => HmToken::end_tag(self.tag_map(tag)),
             CmTag::CodeBlock(_) => {
                 self.hm_queue.push(HmToken::end_tag("pre"));
                 HmToken::end_tag("code")
             }
+            CmTag::FootnoteDefinition(_) => unimplemented!(),
             CmTag::Image(_, _) => unreachable!(),
             CmTag::Link(_, _) => HmToken::end_tag("a"),
-            CmTag::FootnoteDefinition(_) => unimplemented!(),
+            CmTag::TableHead => {
+                self.table_head = false;
+                HmToken::end_tag("tr")
+            }
         }
     }
 
@@ -139,14 +139,17 @@ impl<'a, I> Adapter<'a, I>
 
     fn tag_map(&self, tag: CmTag<'a>) -> Cow<'a, str> {
         match tag {
-            CmTag::Rule => "hr".into(),
-            CmTag::Code => "code".into(),
-            CmTag::Strong => "strong".into(),
-            CmTag::Emphasis => "em".into(),
-            CmTag::Paragraph => "p".into(),
             CmTag::BlockQuote => "blockquote".into(),
+            CmTag::Code => "code".into(),
+            CmTag::Emphasis => "em".into(),
+            CmTag::Header(level) => format!("h{}", level).into(),
+            CmTag::Item => "li".into(),
+            CmTag::List(None) => "ul".into(),
+            CmTag::List(Some(_)) => "ol".into(),
+            CmTag::Paragraph => "p".into(),
+            CmTag::Rule => "hr".into(),
+            CmTag::Strong => "strong".into(),
             CmTag::Table(_) => "table".into(),
-            CmTag::TableRow => "tr".into(),
             CmTag::TableCell => {
                 if self.table_head {
                     "th".into()
@@ -154,10 +157,7 @@ impl<'a, I> Adapter<'a, I>
                     "td".into()
                 }
             }
-            CmTag::Item => "li".into(),
-            CmTag::List(None) => "ul".into(),
-            CmTag::List(Some(_)) => "ol".into(),
-            CmTag::Header(level) => format!("h{}", level).into(),
+            CmTag::TableRow => "tr".into(),
             _ => unreachable!(),
         }
     }
