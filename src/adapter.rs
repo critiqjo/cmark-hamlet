@@ -10,6 +10,7 @@ pub struct Adapter<'a, I> {
     cm_looka: Option<CmEvent<'a>>, // for lookahead
     hm_queue: Vec<HmToken<'a>>,
     group_text: bool,
+    table_head: bool,
 }
 
 impl<'a, I> Adapter<'a, I>
@@ -25,6 +26,7 @@ impl<'a, I> Adapter<'a, I>
             cm_looka: None,
             hm_queue: Vec::with_capacity(2),
             group_text: group_text,
+            table_head: false,
         }
     }
 
@@ -40,13 +42,16 @@ impl<'a, I> Adapter<'a, I>
             CmTag::Paragraph |
             CmTag::BlockQuote |
             CmTag::Table(_) |
-            CmTag::TableHead |
             CmTag::TableRow |
             CmTag::TableCell |
             CmTag::Item |
             CmTag::List(None) |
             CmTag::List(Some(1)) |
-            CmTag::Header(_) => HmToken::start_tag(tag_map(tag), attrs!()),
+            CmTag::Header(_) => HmToken::start_tag(self.tag_map(tag), attrs!()),
+            CmTag::TableHead => {
+                self.table_head = true;
+                HmToken::start_tag("tr", attrs!())
+            }
             CmTag::List(Some(start)) => {
                 HmToken::start_tag("ol", attrs!(start = format!("{}", start)))
             }
@@ -97,12 +102,15 @@ impl<'a, I> Adapter<'a, I>
             CmTag::Paragraph |
             CmTag::BlockQuote |
             CmTag::Table(_) |
-            CmTag::TableHead |
             CmTag::TableRow |
             CmTag::TableCell |
             CmTag::Item |
             CmTag::List(_) |
-            CmTag::Header(_) => HmToken::end_tag(tag_map(tag)),
+            CmTag::Header(_) => HmToken::end_tag(self.tag_map(tag)),
+            CmTag::TableHead => {
+                self.table_head = false;
+                HmToken::end_tag("tr")
+            }
             CmTag::CodeBlock(_) => {
                 self.hm_queue.push(HmToken::end_tag("pre"));
                 HmToken::end_tag("code")
@@ -128,24 +136,30 @@ impl<'a, I> Adapter<'a, I>
         }
         HmToken::Text(s)
     }
-}
 
-fn tag_map<'a>(tag: CmTag<'a>) -> Cow<'a, str> {
-    match tag {
-        CmTag::Rule => "hr".into(),
-        CmTag::Code => "code".into(),
-        CmTag::Strong => "strong".into(),
-        CmTag::Emphasis => "em".into(),
-        CmTag::Paragraph => "p".into(),
-        CmTag::BlockQuote => "blockquote".into(),
-        CmTag::Table(_) => "table".into(),
-        CmTag::TableHead | CmTag::TableRow => "tr".into(),
-        CmTag::TableCell => "td".into(),
-        CmTag::Item => "li".into(),
-        CmTag::List(None) => "ul".into(),
-        CmTag::List(Some(_)) => "ol".into(),
-        CmTag::Header(level) => format!("h{}", level).into(),
-        _ => unreachable!(),
+    fn tag_map(&self, tag: CmTag<'a>) -> Cow<'a, str> {
+        match tag {
+            CmTag::Rule => "hr".into(),
+            CmTag::Code => "code".into(),
+            CmTag::Strong => "strong".into(),
+            CmTag::Emphasis => "em".into(),
+            CmTag::Paragraph => "p".into(),
+            CmTag::BlockQuote => "blockquote".into(),
+            CmTag::Table(_) => "table".into(),
+            CmTag::TableRow => "tr".into(),
+            CmTag::TableCell => {
+                if self.table_head {
+                    "th".into()
+                } else {
+                    "td".into()
+                }
+            }
+            CmTag::Item => "li".into(),
+            CmTag::List(None) => "ul".into(),
+            CmTag::List(Some(_)) => "ol".into(),
+            CmTag::Header(level) => format!("h{}", level).into(),
+            _ => unreachable!(),
+        }
     }
 }
 

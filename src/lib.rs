@@ -65,7 +65,7 @@
 //! `Rule`                  | `hr`
 //! `Strong`                | `strong`
 //! `Table(_)`              | `table`
-//! `TableCell`             | `td`
+//! `TableCell`             | `td` or `th`
 //! `TableHead`             | `tr`
 //! `TableRow`              | `tr`
 //!
