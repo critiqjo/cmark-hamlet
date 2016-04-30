@@ -4,6 +4,9 @@
 //! [pulldown-cmark]: https://github.com/google/pulldown-cmark
 //! [hamlet]: https://github.com/Nemo157/hamlet
 //!
+//! Note that block/inline html within markdown is not parsed into proper hamlet
+//! tokens.
+//!
 //! ## Example
 //!
 //! ```rust
