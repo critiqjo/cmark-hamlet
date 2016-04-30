@@ -9,3 +9,10 @@ matrix:
   allow_failures:
     - rust: nightly
   fast_finish: true
+
+branches:
+  only:
+    - auto
+
+notifications:
+  webhooks: https://kagura-chan.herokuapp.com/travis
