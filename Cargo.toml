@@ -1,8 +1,8 @@
 [package]
 name = "cmark-hamlet"
-version = "0.0.1"
+version = "0.0.2"
 authors = ["critiqjo <john.ch.fr@gmail.com>"]
-description = "WIP: pulldown-cmark to hamlet adapter"
+description = "Provides an adapter from pulldown-cmark to hamlet"
 
 repository = "https://github.com/critiqjo/cmark-hamlet"
 keywords = ["markdown", "pulldown-cmark", "html", "hamlet"]
